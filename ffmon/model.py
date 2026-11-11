@@ -57,11 +57,11 @@ class Schedule:
                  week: int = 0):
         self.games, self.byes, self.week = games or {}, byes or {}, week
 
-    def player(self, name, pos, team, status=None, body=None) -> dict:
+    def player(self, name, pos, team, status=None, body=None, proj=None) -> dict:
         team = norm_team(team)
         g = self.games.get(team) if team else None
         p = {"n": name, "p": pos, "t": team, "s": status or None, "b": body or None,
-             "o": None, "k": None}
+             "o": None, "k": None, "j": round(proj, 1) if isinstance(proj, (int, float)) else None}
         if g:
             p["o"] = ("v " if g["home"] else "@ ") + g["opp"]
             p["k"] = g["date"]

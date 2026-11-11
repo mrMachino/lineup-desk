@@ -91,13 +91,21 @@ def _team_name(t: dict) -> str:
     return t.get("name") or f"{t.get('location', '')} {t.get('nickname', '')}".strip() or f"Team {t.get('id')}"
 
 
+def _proj(pp: dict, week: int):
+    for st in pp.get("stats") or []:
+        if st.get("statSourceId") == 1 and st.get("statSplitTypeId") == 1 and st.get("scoringPeriodId") == week:
+            return st.get("appliedTotal")
+    return None
+
+
 def _roster(team: dict, counts: dict[int, int], sched: Schedule, abbr: dict[int, str]):
     starters, bench, ir = [], [], []
     for e in team.get("roster", {}).get("entries", []):
         sid = e["lineupSlotId"]
         pp = e["playerPoolEntry"]["player"]
         p = sched.player(pp.get("fullName", "?"), POSITIONS.get(pp.get("defaultPositionId"), "?"),
-                         abbr.get(pp.get("proTeamId")), STATUS.get(pp.get("injuryStatus")))
+                         abbr.get(pp.get("proTeamId")), STATUS.get(pp.get("injuryStatus")),
+                         proj=_proj(pp, sched.week))
         if sid == 21:
             ir.append(p)
         elif sid in NON_STARTING:

@@ -43,6 +43,7 @@ def fetch_leagues(username: str, schedule_for_week) -> list[dict]:
     week, season = current_week()
     sched = schedule_for_week(week)
     db = _players_db()
+    proj = projections(season, week)
     out = []
     for lg in _get(f"/user/{uid}/leagues/nfl/{season}"):
         lid = lg["league_id"]
@@ -52,8 +53,25 @@ def fetch_leagues(username: str, schedule_for_week) -> list[dict]:
             continue
         users = {u["user_id"]: u for u in _get(f"/league/{lid}/users")}
         matchups = _get(f"/league/{lid}/matchups/{week}") or []
-        out.append(parse_league(lg, mine, rosters, users, matchups, db, sched, week))
+        out.append(parse_league(lg, mine, rosters, users, matchups, db, sched, week, proj))
     return out
+
+
+def projections(season, week) -> dict:
+    """Sleeper's weekly projections (not official API; empty if unavailable)."""
+    try:
+        r = requests.get(f"https://api.sleeper.app/projections/nfl/{season}/{week}",
+                         params=[("season_type", "regular")] + [("position[]", p) for p in ("QB", "RB", "WR", "TE", "K", "DEF")],
+                         timeout=60)
+        r.raise_for_status()
+        return {x["player_id"]: x.get("stats") or {} for x in r.json() if x.get("player_id")}
+    except Exception:
+        return {}
+
+
+def _proj_key(lg) -> str:
+    rec = (lg.get("scoring_settings") or {}).get("rec", 1)
+    return "pts_ppr" if rec >= 1 else "pts_half_ppr" if rec >= 0.5 else "pts_std"
 
 
 def _name(users, roster):
@@ -66,8 +84,9 @@ def _rec(r):
     return f"{s.get('wins', 0)}-{s.get('losses', 0)}" + (f"-{s['ties']}" if s.get("ties") else "")
 
 
-def parse_league(lg, mine, rosters, users, matchups, db, sched, week) -> dict:
+def parse_league(lg, mine, rosters, users, matchups, db, sched, week, proj=None) -> dict:
     slots = [p for p in lg["roster_positions"] if p not in NON_STARTING]
+    pkey = _proj_key(lg)
 
     def mk(pid):
         p = db.get(pid, {})
@@ -77,7 +96,8 @@ def parse_league(lg, mine, rosters, users, matchups, db, sched, week) -> dict:
         team = p.get("team") or (pid if is_def else None)
         status = p.get("injury_status")
         return sched.player(name, p.get("position") or ("DEF" if is_def else "?"), team,
-                            status, p.get("injury_body_part") if status else None)
+                            status, p.get("injury_body_part") if status else None,
+                            proj=((proj or {}).get(pid) or {}).get(pkey))
 
     def lineup(starters):
         return [{"sl": s, "pl": mk(starters[i]) if i < len(starters) and starters[i] not in ("0", None, "") else None}

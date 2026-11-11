@@ -72,6 +72,16 @@ details { border-top: 1px solid var(--line); }
 summary { cursor: pointer; padding: 10px 16px; font-family: var(--display); font-weight: 600; font-size: 15px; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); }
 summary:hover, summary:focus-visible { color: var(--ink); outline: none; }
 .locked { opacity: .55; }
+.pj { text-align: right; font-family: var(--mono); font-size: 13px; color: var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; width: 48px; }
+.pjline { font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
+.pjline b { color: var(--ink); font-weight: 500; }
+.search { display: flex; gap: 8px; align-items: center; }
+.search input { flex: 1; min-width: 0; font: 15px var(--body); color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 9px 12px; }
+.search input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.search input::placeholder { color: var(--muted); }
+#found { font-size: 13px; color: var(--muted); }
+tr.hit td { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.hidden { display: none !important; }
 .meta a.force { color: var(--muted); font-size: 12px; }
 .refresh { font: 600 13px var(--body); color: var(--bg); background: var(--accent); border: 0; border-radius: 4px; padding: 4px 12px; cursor: pointer; }
 .refresh:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
@@ -94,9 +104,11 @@ summary:hover, summary:focus-visible { color: var(--ink); outline: none; }
     <h1>Lineup Desk <span id="wk"></span></h1>
     <div class="meta" id="meta">Loading your leagues…</div>
     <div class="summary" id="summary"></div>
+    <div class="search"><input id="q" type="search" placeholder="Search a player across all your teams" autocomplete="off" aria-label="Search a player"></div>
+    <div id="found"></div>
   </header>
   <div id="leagues"><div class="card wait">Loading your leagues…</div></div>
-  <p class="note">Refresh pulls your ESPN and Sleeper lineups live. Yahoo leagues update every 10 minutes. Swap suggestions only list healthy bench players who aren't on bye and whose game hasn't started.</p>
+  <p class="note">Refresh pulls your ESPN and Sleeper lineups live. Projections are each site's own: ESPN uses your league's scoring; Sleeper's are standard PPR, half or non-PPR to match your league. Swap suggestions only list healthy bench players who aren't on bye and whose game hasn't started.</p>
 </main>
 <script>
 const SLOT = { WRRB_FLEX: "W/R", REC_FLEX: "W/T", SUPER_FLEX: "SF", FLEX: "FLEX", "W/R/T": "FLEX", "D/ST": "DEF", "Q/W/R/T": "SF", OP: "SF" };
@@ -137,7 +149,7 @@ function issuesFor(L) {
 
 function row(slotName, p) {
   const slot = SLOT[slotName] || slotName || "";
-  if (!p) return `<tr class="sev empty" style="--c:var(--bad)"><td class="slot">${esc(slot)}</td><td class="pl">Empty</td><td></td><td class="game"></td></tr>`;
+  if (!p) return `<tr class="sev empty" style="--c:var(--bad)"><td class="slot">${esc(slot)}</td><td class="pl">Empty</td><td></td><td class="pj"></td><td class="game"></td></tr>`;
   const sv = p.y ? "bad" : SEV(p.s);
   const locked = p.k && p.k < Date.now();
   const tag = p.y ? `<span class="tag" style="--c:var(--bad)">Bye</span>` : sv ? `<span class="tag" style="--c:${COLOR[sv]}">${esc(p.s)}</span>` : "";
@@ -145,12 +157,15 @@ function row(slotName, p) {
   return `<tr class="${sv && !locked ? "sev" : ""} ${locked ? "locked" : ""}" style="--c:${COLOR[sv] || "transparent"}">
     <td class="slot">${esc(slot)}</td>
     <td class="pl">${esc(p.n)}<small>${esc(p.p)} · ${esc(p.t || "FA")}${p.b && sv ? " · " + esc(p.b) : ""}</small></td>
-    <td>${tag}</td><td class="game">${game}</td></tr>`;
+    <td>${tag}</td><td class="pj">${p.j != null && !p.y ? p.j.toFixed(1) : ""}</td><td class="game">${game}</td></tr>`;
 }
 
 function card(L) {
   if (isOut(L)) return `<section class="card out"><div class="strip"><div class="lg"><span class="plat">${esc(L.pf)}</span>${esc(L.lg)}</div><div class="vs">${esc(L.tm)} <small>${esc(L.rec || "")}</small></div></div><div class="allgood" style="color:var(--muted)">No players on this roster. Eliminated, or the team isn't set up.</div></section>`;
   const iss = issuesFor(L);
+  const tot = lu => { const v = (lu || []).filter(r => r.pl && r.pl.j != null).map(r => r.pl.j); return v.length ? v.reduce((a, b) => a + b, 0).toFixed(1) : null; };
+  const myT = tot(L.lu), opT = L.opp ? tot(L.opp.lu) : null;
+  const pjline = myT ? `<div class="pjline">Projected <b>${myT}</b>${opT ? ` vs <b>${opT}</b>` : ""}</div>` : "";
   const opp = L.opp ? `<span class="v">vs</span> ${esc(L.opp.tm)} <small>${esc(L.opp.rec || "")}</small>` : "";
   const alerts = iss.length
     ? `<div class="alerts">${iss.map(i => `<div class="alert" style="--c:${COLOR[i.sev]}"><div>${i.txt}${i.swap ? `<span class="swap">Swap in: ${i.swap}</span>` : ""}</div></div>`).join("")}</div>`
@@ -160,7 +175,7 @@ function card(L) {
   const oppT = L.opp && L.opp.lu ? `<details><summary>${esc(L.opp.tm)} lineup</summary><table>${L.opp.lu.map(r => row(r.sl, r.pl)).join("")}</table></details>` : "";
   return `<section class="card">
     <div class="strip"><div class="lg"><span class="plat">${esc(L.pf)}</span>${esc(L.lg)}${L.wk ? " · Week " + L.wk : ""}</div>
-    <div class="vs">${esc(L.tm)} <small>${esc(L.rec || "")}</small> ${opp}${L.url ? `<a class="edit" href="${esc(L.url)}" target="_blank" rel="noopener">Set lineup</a>` : ""}</div></div>
+    <div class="vs">${esc(L.tm)} <small>${esc(L.rec || "")}</small> ${opp}${L.url ? `<a class="edit" href="${esc(L.url)}" target="_blank" rel="noopener">Set lineup</a>` : ""}</div>${pjline}</div>
     ${alerts}
     <table>${L.lu.map(r => row(r.sl, r.pl)).join("")}</table>
     ${bench}${ir}${oppT}</section>`;
@@ -187,6 +202,7 @@ function render(d) {
   const rank = L => isOut(L) ? 3 : issuesFor(L).some(i => i.sev === "bad") ? 0 : issuesFor(L).length ? 1 : 2;
   const sorted = [...d.leagues].sort((a, b) => rank(a) - rank(b));
   document.getElementById("leagues").innerHTML = `<div style="display:grid;gap:18px">${sorted.map(card).join("")}</div>`;
+  applySearch();
 }
 
 
@@ -211,9 +227,9 @@ async function sched(season, week) {
       games[ab[t.id]] = { opp: ab[home ? g.awayProTeamId : g.homeProTeamId], home, date: g.date }; }); });
   return proCache[key] = { games, byes, ab, week };
 }
-function mkP(S, n, p, t, s, b) {
+function mkP(S, n, p, t, s, b, j) {
   t = nt(t); const g = t && S.games[t];
-  const o = { n, p, t, s: s || null, b: s ? (b || null) : null, o: null, k: null };
+  const o = { n, p, t, s: s || null, b: s ? (b || null) : null, o: null, k: null, j: typeof j === "number" ? Math.round(j * 10) / 10 : null };
   if (g) { o.o = (g.home ? "v " : "@ ") + g.opp; o.k = g.date; } else if (t && S.byes[t] === S.week) o.y = true;
   return o;
 }
@@ -230,7 +246,8 @@ async function liveEspn(L) {
   const order = E_ORDER.filter(i => counts[i]).map(i => [E_SLOTS[i], counts[i]]);
   const roster = t => { const st = [], bn = [], ir = [];
     (t.roster?.entries || []).forEach(e => { const pp = e.playerPoolEntry.player, sid = e.lineupSlotId;
-      const p = mkP(S, pp.fullName, E_POS[pp.defaultPositionId] || "?", S.ab[pp.proTeamId], E_STAT[pp.injuryStatus]);
+      const pj = (pp.stats || []).find(x => x.statSourceId === 1 && x.statSplitTypeId === 1 && x.scoringPeriodId === S.week);
+      const p = mkP(S, pp.fullName, E_POS[pp.defaultPositionId] || "?", S.ab[pp.proTeamId], E_STAT[pp.injuryStatus], null, pj ? pj.appliedTotal : null);
       if (sid === 21) ir.push(p); else if (E_BENCH.has(sid)) bn.push(p); else st.push([E_SLOTS[sid] || String(sid), p]); });
     return { lu: layout(order, st), bn, ir }; };
   const nm = t => t.name || `${t.location || ""} ${t.nickname || ""}`.trim();
@@ -243,7 +260,7 @@ async function liveEspn(L) {
     if (ot) opp = { tm: nm(ot), rec: rec(ot), lu: roster(ot).lu }; }
   return { ...L, tm: nm(me), rec: rec(me), wk: d.scoringPeriodId, opp, ...mine };
 }
-let sleeperDb = null, sleeperState = null;
+let sleeperDb = null, sleeperState = null, sleeperProj = null;
 async function liveSleeper(L) {
   const S0 = "https://api.sleeper.app/v1";
   sleeperState = sleeperState || await getJ(S0 + "/state/nfl");
@@ -251,6 +268,9 @@ async function liveSleeper(L) {
   const [lg, rosters, users, mus] = await Promise.all([getJ(`${S0}/league/${L.src.lid}`), getJ(`${S0}/league/${L.src.lid}/rosters`),
     getJ(`${S0}/league/${L.src.lid}/users`), getJ(`${S0}/league/${L.src.lid}/matchups/${week}`)]);
   sleeperDb = sleeperDb || await getJ(S0 + "/players/nfl");
+  if (!sleeperProj) sleeperProj = await getJ(`${S0.replace("/v1", "")}/projections/nfl/${sleeperState.season}/${week}?season_type=regular&position[]=QB&position[]=RB&position[]=WR&position[]=TE&position[]=K&position[]=DEF`)
+    .then(a => { const m = {}; a.forEach(x => m[x.player_id] = x.stats || {}); return m; }).catch(() => ({}));
+  const recPts = (lg.scoring_settings || {}).rec ?? 1, pkey = recPts >= 1 ? "pts_ppr" : recPts >= 0.5 ? "pts_half_ppr" : "pts_std";
   const S = await sched(sleeperState.season, week);
   const slots = lg.roster_positions.filter(p => !["BN", "IR", "TAXI"].includes(p));
   const um = {}; users.forEach(u => um[u.user_id] = u);
@@ -258,7 +278,7 @@ async function liveSleeper(L) {
   const rec = r => { const s = r.settings || {}; return `${s.wins || 0}-${s.losses || 0}${s.ties ? "-" + s.ties : ""}`; };
   const mk = id => { const p = sleeperDb[id] || {}, def = p.position === "DEF" || (/^[A-Z]+$/.test(id) && !p.position);
     const n = p.full_name || `${p.first_name || ""} ${p.last_name || ""}`.trim() || (def ? id + " D/ST" : id);
-    return mkP(S, n, p.position || (def ? "DEF" : "?"), p.team || (def ? id : null), p.injury_status, p.injury_body_part); };
+    return mkP(S, n, p.position || (def ? "DEF" : "?"), p.team || (def ? id : null), p.injury_status, p.injury_body_part, (sleeperProj[id] || {})[pkey]); };
   const lineup = st => slots.map((sl, i) => ({ sl, pl: st[i] && st[i] !== "0" ? mk(st[i]) : null }));
   const me = rosters.find(r => r.roster_id === L.src.rid); const myMu = mus.find(m => m.roster_id === me.roster_id);
   const starters = (myMu && myMu.starters) || me.starters || [], res = new Set(me.reserve || []), taxi = new Set(me.taxi || []);
@@ -271,7 +291,7 @@ async function liveSleeper(L) {
 async function liveRefresh(btn) {
   if (!current) return load();
   btn.textContent = "Pulling live…"; btn.disabled = true;
-  proCache = {}; sleeperState = null;
+  proCache = {}; sleeperState = null; sleeperProj = null;
   let failed = 0;
   const leagues = await Promise.all(current.leagues.map(async L => {
     try { return L.src?.type === "espn" ? await liveEspn(L) : L.src?.type === "sleeper" ? await liveSleeper(L) : L; }
@@ -282,6 +302,30 @@ async function liveRefresh(btn) {
 }
 
 let current = null;
+function applySearch() {
+  const q = (document.getElementById("q").value || "").trim().toLowerCase();
+  const cards = document.querySelectorAll("#leagues section.card");
+  let teams = 0, start = 0, bench = 0;
+  cards.forEach(c => {
+    c.querySelectorAll("tr.hit").forEach(r => r.classList.remove("hit"));
+    if (!q) { c.classList.remove("hidden"); return; }
+    let mine = false;
+    c.querySelectorAll("tr").forEach(r => {
+      const nm = r.querySelector(".pl"); if (!nm) return;
+      const name = (nm.firstChild && nm.firstChild.textContent || "").toLowerCase();
+      if (!name.includes(q)) return;
+      r.classList.add("hit");
+      const det = r.closest("details");
+      const isOpp = det && /lineup$/i.test(det.querySelector("summary").textContent);
+      if (det) det.open = true;
+      if (!isOpp) { mine = true; det ? bench++ : start++; }
+    });
+    c.classList.toggle("hidden", !mine && !c.querySelector("tr.hit"));
+    if (mine) teams++;
+  });
+  document.getElementById("found").textContent = q ? (teams ? `On ${teams} of your team${teams > 1 ? "s" : ""}: ${start} starting, ${bench} on bench or IR` : "Not on any of your teams") : "";
+}
+document.getElementById("q").addEventListener("input", applySearch);
 async function load() {
   try {
     const r = await fetch("data.json?t=" + Date.now(), { cache: "no-store" });
