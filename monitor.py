@@ -46,10 +46,11 @@ def collect(cfg: dict) -> tuple[list[dict], list[str]]:
             espn_ids = list(dict.fromkeys(espn.discover_leagues(swid, s2, season) + espn_ids))
         except Exception as e:
             errors.append(f"ESPN league list ({e})")
+    if espn_ids and not swid:
+        errors.append("ESPN (logins not added to GitHub yet)")
+        espn_ids = []
     for lid in espn_ids:
         try:
-            if not swid:
-                raise RuntimeError("ESPN_SWID secret is not set")
             leagues.append(espn.fetch_league(int(lid), season, swid, s2, pro))
         except Exception as e:
             errors.append(f"ESPN league {lid} ({e})")
