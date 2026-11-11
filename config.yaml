@@ -6,7 +6,7 @@ espn:
   league_ids: [31673225, 2123102148, 518494697, 1243880026, 1810396069, 592802010, 703345827, 1225074630, 2063087884, 2054871492, 1658637209, 217966238, 676199988, 840871780, 1966962495, 1424768046, 1413260451, 1908299909, 873698663]
 
 yahoo:
-  enabled: false       # turn on after adding the 3 Yahoo secrets (finds all your leagues)
+  enabled: true        # finds every Yahoo league you're in
 
 sleeper:
   username: MrMachino  # finds every Sleeper league you're in
