@@ -55,8 +55,14 @@ def fetch_leagues(season: int, schedule_for_week) -> list[dict]:
             pass
         out.append({"pf": "Yahoo", "lg": lg.settings().get("name", key), "tm": names.get(my_key, "My team"),
                     "rec": _rec(standings.get(my_key)), "wk": week, "opp": opp,
-                    "lu": lu, "bn": bn, "ir": ir})
+                    "lu": lu, "bn": bn, "ir": ir, "url": _team_url(my_key)})
     return out
+
+
+def _team_url(team_key: str) -> str:
+    # team_key looks like "461.l.12345.t.7"
+    parts = team_key.split(".")
+    return f"https://football.fantasysports.yahoo.com/f1/{parts[2]}/{parts[4]}"
 
 
 def _rec(st: dict | None) -> str:

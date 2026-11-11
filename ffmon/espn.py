@@ -136,8 +136,10 @@ def parse_league(data: dict, swid: str, pro: dict) -> dict:
                 olu, _, _ = _roster(ot, counts, sched, abbr)
                 opp = {"tm": _team_name(ot), "rec": _record(ot), "lu": olu}
             break
+    url = (f"https://fantasy.espn.com/football/team?leagueId={data.get('id')}"
+           f"&teamId={mine['id']}&seasonId={data.get('seasonId', season_now())}")
     return {"pf": "ESPN", "lg": name, "tm": _team_name(mine), "rec": _record(mine), "wk": week,
-            "opp": opp, "lu": lu, "bn": bn, "ir": ir}
+            "opp": opp, "lu": lu, "bn": bn, "ir": ir, "url": url}
 
 
 def season_now() -> int:

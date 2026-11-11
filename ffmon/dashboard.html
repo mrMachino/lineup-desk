@@ -40,6 +40,8 @@ h1 span { color: var(--accent); }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .strip { display: grid; gap: 4px; padding: 14px 16px 12px; border-bottom: 1px solid var(--line); }
 .lg { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+.edit { margin-left: auto; font-family: var(--display); font-weight: 700; font-size: 15px; letter-spacing: .5px; text-transform: uppercase; color: var(--bg); background: var(--accent); padding: 6px 12px; border-radius: 4px; text-decoration: none; white-space: nowrap; }
+.edit:hover, .edit:focus-visible { filter: brightness(1.1); outline: 2px solid var(--ink); outline-offset: 2px; }
 .plat { font-family: var(--display); font-weight: 700; font-size: 13px; letter-spacing: .6px; text-transform: uppercase; color: var(--bg); background: var(--accent); padding: 1px 6px; border-radius: 3px; }
 .vs { font-family: var(--display); font-weight: 700; font-size: 24px; text-transform: uppercase; letter-spacing: .3px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
 .vs small { font-family: var(--mono); font-size: 13px; color: var(--muted); font-weight: 500; }
@@ -148,7 +150,7 @@ function card(L) {
   const oppT = L.opp && L.opp.lu ? `<details><summary>${esc(L.opp.tm)} lineup</summary><table>${L.opp.lu.map(r => row(r.sl, r.pl)).join("")}</table></details>` : "";
   return `<section class="card">
     <div class="strip"><div class="lg"><span class="plat">${esc(L.pf)}</span>${esc(L.lg)}${L.wk ? " · Week " + L.wk : ""}</div>
-    <div class="vs">${esc(L.tm)} <small>${esc(L.rec || "")}</small> ${opp}</div></div>
+    <div class="vs">${esc(L.tm)} <small>${esc(L.rec || "")}</small> ${opp}${L.url ? `<a class="edit" href="${esc(L.url)}" target="_blank" rel="noopener">Set lineup</a>` : ""}</div></div>
     ${alerts}
     <table>${L.lu.map(r => row(r.sl, r.pl)).join("")}</table>
     ${bench}${ir}${oppT}</section>`;
