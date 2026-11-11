@@ -92,6 +92,9 @@ def report(leagues: list[dict], errors: list[str], min_level: str) -> tuple[str,
 def write_site(out: str, leagues: list[dict], errors: list[str], refresh_url: str) -> None:
     os.makedirs(out, exist_ok=True)
     shutil.copy(os.path.join(HERE, "ffmon", "dashboard.html"), os.path.join(out, "index.html"))
+    static = os.path.join(HERE, "ffmon", "static")
+    for name in os.listdir(static):
+        shutil.copy(os.path.join(static, name), os.path.join(out, name))
     data = {"updated": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
             "wk": max((L.get("wk") or 0 for L in leagues), default=0),
             "leagues": leagues, "errors": [e.split(" (")[0] for e in errors], "refresh": refresh_url}
