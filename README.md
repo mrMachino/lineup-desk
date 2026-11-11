@@ -14,7 +14,7 @@ Repo → Settings → Secrets and variables → Actions → **New repository sec
 |---|---|
 | `ESPN_SWID` | Chrome on espn.com (logged in) → F12 → Application → Cookies → `https://www.espn.com` → `SWID` (keep the `{ }`) |
 | `ESPN_S2` | Same list → `espn_s2` |
-| `YAHOO_CONSUMER_KEY`, `YAHOO_CONSUMER_SECRET`, `YAHOO_REFRESH_TOKEN` | Run `python yahoo_setup.py` once on your computer (needs a free app from developer.yahoo.com, permission *Fantasy Sports: Read*) |
+| `YAHOO_CONSUMER_KEY`, `YAHOO_CONSUMER_SECRET`, `YAHOO_REFRESH_TOKEN` | Run `python yahoo_setup.py` once on your computer (needs a free app from developer.yahoo.com: redirect URI `https://localhost:8000`, permission *Fantasy Sports: Read*) |
 | `NTFY_TOPIC` (optional) | Phone alerts: install the ntfy app, subscribe to a hard-to-guess topic name, save the same name here |
 
 Then in `config.yaml`: add your ESPN league IDs and set `yahoo: enabled: true`.

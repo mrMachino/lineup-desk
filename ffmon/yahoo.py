@@ -20,7 +20,8 @@ def _oauth():
         creds = {"consumer_key": os.environ["YAHOO_CONSUMER_KEY"],
                  "consumer_secret": os.environ["YAHOO_CONSUMER_SECRET"],
                  "refresh_token": os.environ["YAHOO_REFRESH_TOKEN"],
-                 "access_token": "expired", "token_type": "bearer", "token_time": 0, "guid": None}
+                 "access_token": "expired", "token_type": "bearer", "token_time": 0, "guid": None,
+                 "callback_uri": "https://localhost:8000"}
         fd, path = tempfile.mkstemp(suffix=".json")
         with os.fdopen(fd, "w") as f:
             json.dump(creds, f)
