@@ -99,4 +99,5 @@ def parse_league(lg, mine, rosters, users, matchups, db, sched, week) -> dict:
 
     return {"pf": "Sleeper", "lg": lg["name"], "tm": _name(users, mine), "rec": _rec(mine), "wk": week,
             "opp": opp, "lu": lineup(starters), "bn": bench, "ir": [mk(pid) for pid in reserve],
-            "url": f"https://sleeper.com/leagues/{lg.get('league_id')}/team"}
+            "url": f"https://sleeper.com/leagues/{lg.get('league_id')}/team",
+            "src": {"type": "sleeper", "lid": lg.get("league_id"), "rid": mine["roster_id"]}}

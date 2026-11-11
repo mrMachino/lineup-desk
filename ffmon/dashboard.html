@@ -96,7 +96,7 @@ summary:hover, summary:focus-visible { color: var(--ink); outline: none; }
     <div class="summary" id="summary"></div>
   </header>
   <div id="leagues"><div class="card wait">Loading your leagues…</div></div>
-  <p class="note">Your leagues are pulled every 10 minutes. This page picks up each new pull on its own; the Refresh button grabs the latest one right away. Swap suggestions only list healthy bench players who aren't on bye and whose game hasn't started.</p>
+  <p class="note">Refresh pulls your ESPN and Sleeper lineups live. Yahoo leagues update every 10 minutes. Swap suggestions only list healthy bench players who aren't on bye and whose game hasn't started.</p>
 </main>
 <script>
 const SLOT = { WRRB_FLEX: "W/R", REC_FLEX: "W/T", SUPER_FLEX: "SF", FLEX: "FLEX", "W/R/T": "FLEX", "D/ST": "DEF", "Q/W/R/T": "SF", OP: "SF" };
@@ -176,8 +176,8 @@ function render(d) {
   const upd = d.updated ? et(Date.parse(d.updated), { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) + " ET" : "unknown";
   const errs = (d.errors || []).map(e => `<span class="err">Couldn't load ${esc(e)}</span>`).join("");
   const ago = d.updated ? Math.max(0, Math.round((Date.now() - Date.parse(d.updated)) / 60000)) : null;
-  document.getElementById("meta").innerHTML = `<span>Pulled from your leagues ${ago === null ? "" : ago < 1 ? "just now" : ago + " min ago"} (${upd})</span><span>${d.leagues.length} league${d.leagues.length === 1 ? "" : "s"}</span><button type="button" id="refresh" class="refresh">Refresh</button>${errs}<a class="force" href="${esc(d.refresh || "#")}" target="_blank" rel="noopener">Force a new pull on GitHub</a>`;
-  document.getElementById("refresh").onclick = async e => { e.target.textContent = "Refreshing…"; e.target.disabled = true; await load(); };
+  document.getElementById("meta").innerHTML = `<span>${d.live ? "Live as of" : "Updated"} ${ago === null ? "" : ago < 1 ? "just now" : ago + " min ago"} (${upd})</span><span>${d.leagues.length} league${d.leagues.length === 1 ? "" : "s"}</span><button type="button" id="refresh" class="refresh">Refresh</button>${errs}`;
+  document.getElementById("refresh").onclick = e => liveRefresh(e.target);
   let bad = 0, warn = 0;
   d.leagues.forEach(L => issuesFor(L).forEach(i => i.sev === "bad" ? bad++ : warn++));
   document.getElementById("summary").innerHTML =
@@ -189,10 +189,104 @@ function render(d) {
   document.getElementById("leagues").innerHTML = `<div style="display:grid;gap:18px">${sorted.map(card).join("")}</div>`;
 }
 
+
+// ---------- Live refresh: pull ESPN + Sleeper straight from their public APIs ----------
+const ESPN = "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/";
+const E_SLOTS = {0:"QB",2:"RB",3:"W/R",4:"WR",5:"W/T",6:"TE",7:"OP",16:"DEF",17:"K",20:"BE",21:"IR",23:"FLEX",24:"ER"};
+const E_ORDER = [0,2,4,6,3,5,23,7,16,17], E_BENCH = new Set([20,21,24]);
+const E_POS = {1:"QB",2:"RB",3:"WR",4:"TE",5:"K",16:"DEF"};
+const E_STAT = {OUT:"Out",DOUBTFUL:"Doubtful",QUESTIONABLE:"Questionable",DAY_TO_DAY:"Questionable",INJURY_RESERVE:"IR",SUSPENSION:"Suspended"};
+const ALIAS = {WSH:"WAS",JAC:"JAX",LA:"LAR",OAK:"LV",SD:"LAC"};
+const nt = a => a ? (ALIAS[a.toUpperCase()] || a.toUpperCase()) : null;
+const getJ = async u => { const r = await fetch(u, { credentials: "omit", cache: "no-store" }); if (!r.ok) throw new Error(r.status); return r.json(); };
+let proCache = {};
+async function sched(season, week) {
+  const key = season + "/" + week;
+  if (proCache[key]) return proCache[key];
+  if (!proCache["pro" + season]) proCache["pro" + season] = await getJ(ESPN + season + "?view=proTeamSchedules_wl");
+  const teams = proCache["pro" + season].settings.proTeams, ab = {}; teams.forEach(t => ab[t.id] = nt(t.abbrev));
+  const games = {}, byes = {};
+  teams.forEach(t => { if (!t.id) return; byes[ab[t.id]] = t.byeWeek;
+    ((t.proGamesByScoringPeriod || {})[week] || []).forEach(g => { const home = g.homeProTeamId === t.id;
+      games[ab[t.id]] = { opp: ab[home ? g.awayProTeamId : g.homeProTeamId], home, date: g.date }; }); });
+  return proCache[key] = { games, byes, ab, week };
+}
+function mkP(S, n, p, t, s, b) {
+  t = nt(t); const g = t && S.games[t];
+  const o = { n, p, t, s: s || null, b: s ? (b || null) : null, o: null, k: null };
+  if (g) { o.o = (g.home ? "v " : "@ ") + g.opp; o.k = g.date; } else if (t && S.byes[t] === S.week) o.y = true;
+  return o;
+}
+function layout(order, starters) {
+  const pool = {}; starters.forEach(([sl, p]) => (pool[sl] = pool[sl] || []).push(p));
+  const lu = []; order.forEach(([sl, c]) => { for (let i = 0; i < c; i++) lu.push({ sl, pl: (pool[sl] || []).shift() || null }); });
+  return lu;
+}
+async function liveEspn(L) {
+  const { lid, tid, season } = L.src;
+  const d = await getJ(`${ESPN}${season}/segments/0/leagues/${lid}?view=mTeam&view=mRoster&view=mMatchup&view=mSettings`);
+  const S = await sched(season, d.scoringPeriodId);
+  const counts = {}; Object.entries(d.settings.rosterSettings.lineupSlotCounts).forEach(([k, v]) => { if (v) counts[+k] = v; });
+  const order = E_ORDER.filter(i => counts[i]).map(i => [E_SLOTS[i], counts[i]]);
+  const roster = t => { const st = [], bn = [], ir = [];
+    (t.roster?.entries || []).forEach(e => { const pp = e.playerPoolEntry.player, sid = e.lineupSlotId;
+      const p = mkP(S, pp.fullName, E_POS[pp.defaultPositionId] || "?", S.ab[pp.proTeamId], E_STAT[pp.injuryStatus]);
+      if (sid === 21) ir.push(p); else if (E_BENCH.has(sid)) bn.push(p); else st.push([E_SLOTS[sid] || String(sid), p]); });
+    return { lu: layout(order, st), bn, ir }; };
+  const nm = t => t.name || `${t.location || ""} ${t.nickname || ""}`.trim();
+  const rec = t => { const o = t.record?.overall || {}; return `${o.wins || 0}-${o.losses || 0}${o.ties ? "-" + o.ties : ""}`; };
+  const me = d.teams.find(t => t.id === tid); if (!me) throw new Error("team not found");
+  const mine = roster(me), period = d.status?.currentMatchupPeriod || d.scoringPeriodId;
+  let opp = null;
+  const m = (d.schedule || []).find(m => m.matchupPeriodId === period && [m.home?.teamId, m.away?.teamId].includes(tid));
+  if (m) { const oid = m.home?.teamId === tid ? m.away?.teamId : m.home?.teamId; const ot = d.teams.find(t => t.id === oid);
+    if (ot) opp = { tm: nm(ot), rec: rec(ot), lu: roster(ot).lu }; }
+  return { ...L, tm: nm(me), rec: rec(me), wk: d.scoringPeriodId, opp, ...mine };
+}
+let sleeperDb = null, sleeperState = null;
+async function liveSleeper(L) {
+  const S0 = "https://api.sleeper.app/v1";
+  sleeperState = sleeperState || await getJ(S0 + "/state/nfl");
+  const week = sleeperState.display_week || sleeperState.week;
+  const [lg, rosters, users, mus] = await Promise.all([getJ(`${S0}/league/${L.src.lid}`), getJ(`${S0}/league/${L.src.lid}/rosters`),
+    getJ(`${S0}/league/${L.src.lid}/users`), getJ(`${S0}/league/${L.src.lid}/matchups/${week}`)]);
+  sleeperDb = sleeperDb || await getJ(S0 + "/players/nfl");
+  const S = await sched(sleeperState.season, week);
+  const slots = lg.roster_positions.filter(p => !["BN", "IR", "TAXI"].includes(p));
+  const um = {}; users.forEach(u => um[u.user_id] = u);
+  const nm = r => { const u = um[r.owner_id] || {}; return (u.metadata && u.metadata.team_name) || u.display_name || "Team " + r.roster_id; };
+  const rec = r => { const s = r.settings || {}; return `${s.wins || 0}-${s.losses || 0}${s.ties ? "-" + s.ties : ""}`; };
+  const mk = id => { const p = sleeperDb[id] || {}, def = p.position === "DEF" || (/^[A-Z]+$/.test(id) && !p.position);
+    const n = p.full_name || `${p.first_name || ""} ${p.last_name || ""}`.trim() || (def ? id + " D/ST" : id);
+    return mkP(S, n, p.position || (def ? "DEF" : "?"), p.team || (def ? id : null), p.injury_status, p.injury_body_part); };
+  const lineup = st => slots.map((sl, i) => ({ sl, pl: st[i] && st[i] !== "0" ? mk(st[i]) : null }));
+  const me = rosters.find(r => r.roster_id === L.src.rid); const myMu = mus.find(m => m.roster_id === me.roster_id);
+  const starters = (myMu && myMu.starters) || me.starters || [], res = new Set(me.reserve || []), taxi = new Set(me.taxi || []);
+  let opp = null;
+  if (myMu) { const om = mus.find(m => m.matchup_id === myMu.matchup_id && m.roster_id !== me.roster_id);
+    const orr = om && rosters.find(r => r.roster_id === om.roster_id); if (orr) opp = { tm: nm(orr), rec: rec(orr), lu: lineup(om.starters || []) }; }
+  return { ...L, tm: nm(me), rec: rec(me), wk: week, opp, lu: lineup(starters),
+    bn: (me.players || []).filter(id => !starters.includes(id) && !res.has(id) && !taxi.has(id)).map(mk), ir: [...res].map(mk) };
+}
+async function liveRefresh(btn) {
+  if (!current) return load();
+  btn.textContent = "Pulling live…"; btn.disabled = true;
+  proCache = {}; sleeperState = null;
+  let failed = 0;
+  const leagues = await Promise.all(current.leagues.map(async L => {
+    try { return L.src?.type === "espn" ? await liveEspn(L) : L.src?.type === "sleeper" ? await liveSleeper(L) : L; }
+    catch (e) { failed++; return L; } }));
+  current = { ...current, leagues, updated: new Date().toISOString(), live: true };
+  render(current);
+  if (failed) document.getElementById("meta").insertAdjacentHTML("beforeend", `<span class="err">${failed} league${failed > 1 ? "s" : ""} didn't answer; showing the last pull for ${failed > 1 ? "those" : "it"}</span>`);
+}
+
+let current = null;
 async function load() {
   try {
     const r = await fetch("data.json?t=" + Date.now(), { cache: "no-store" });
-    render(r.ok ? await r.json() : null);
+    const d = r.ok ? await r.json() : null;
+    if (!current || !current.live || (d && Date.parse(d.updated) > Date.parse(current.updated))) { current = d; render(d); }
   } catch (e) { render(null); }
 }
 load();
