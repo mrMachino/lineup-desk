@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Fantasy Lineup Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Game-day scoreboard: dark turf panel, chalk text, one stadium-light accent. Leagues stack as cards; each card = matchup strip, alerts, lineup rows. */
+  --bg: #0f1512;
+  --panel: #18211c;
+  --line: #2a3630;
+  --ink: #e8efe9;
+  --muted: #8fa198;
+  --accent: #f2c14e;
+  --bad: #ff6b5e;
+  --warn: #f2c14e;
+  --ok: #5fd39a;
+  --info: #7fb2ff;
+  --display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --body: "IBM Plex Sans", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.4; }
+main { max-width: 860px; margin: 0 auto; padding: 20px 16px 48px; display: grid; gap: 18px; }
+header { display: grid; gap: 6px; }
+h1 { font-family: var(--display); font-weight: 700; font-size: 34px; letter-spacing: .5px; margin: 0; text-transform: uppercase; text-wrap: balance; }
+h1 span { color: var(--accent); }
+.meta { color: var(--muted); font-size: 13px; display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.summary { display: flex; flex-wrap: wrap; gap: 8px; }
+.pill { font-family: var(--display); font-weight: 600; font-size: 15px; letter-spacing: .4px; text-transform: uppercase; padding: 3px 10px; border-radius: 4px; border: 1px solid var(--line); background: var(--panel); white-space: nowrap; }
+.pill.bad { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 45%, transparent); }
+.pill.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, transparent); }
+.pill.ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, transparent); }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.strip { display: grid; gap: 4px; padding: 14px 16px 12px; border-bottom: 1px solid var(--line); }
+.lg { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+.plat { font-family: var(--display); font-weight: 700; font-size: 13px; letter-spacing: .6px; text-transform: uppercase; color: var(--bg); background: var(--accent); padding: 1px 6px; border-radius: 3px; }
+.vs { font-family: var(--display); font-weight: 700; font-size: 24px; text-transform: uppercase; letter-spacing: .3px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.vs small { font-family: var(--mono); font-size: 13px; color: var(--muted); font-weight: 500; }
+.vs .v { color: var(--muted); font-size: 18px; }
+.alerts { display: grid; gap: 6px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.alert { display: grid; grid-template-columns: 10px 1fr; gap: 10px; align-items: start; font-size: 14px; }
+.alert::before { content: ""; width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; background: var(--c); }
+.alert .swap { color: var(--muted); font-size: 13px; display: block; }
+.allgood { color: var(--ok); font-size: 14px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+table { width: 100%; border-collapse: collapse; }
+td { padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+tr:last-child td { border-bottom: 0; }
+tr.sev td:first-child { box-shadow: inset 3px 0 0 var(--c); }
+.slot { font-family: var(--display); font-weight: 700; font-size: 15px; color: var(--muted); width: 52px; padding-left: 16px; text-transform: uppercase; }
+.pl { font-weight: 600; }
+.pl small { display: block; font-weight: 400; color: var(--muted); font-size: 12.5px; }
+.game { text-align: right; font-family: var(--mono); font-size: 12.5px; color: var(--muted); white-space: nowrap; padding-right: 16px; font-variant-numeric: tabular-nums; }
+.game b { color: var(--ink); font-weight: 500; }
+.tag { font-family: var(--display); font-weight: 700; font-size: 13px; letter-spacing: .5px; text-transform: uppercase; padding: 1px 6px; border-radius: 3px; color: var(--c); border: 1px solid color-mix(in srgb, var(--c) 50%, transparent); white-space: nowrap; }
+.empty .pl { color: var(--bad); }
+details { border-top: 1px solid var(--line); }
+summary { cursor: pointer; padding: 10px 16px; font-family: var(--display); font-weight: 600; font-size: 15px; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); }
+summary:hover, summary:focus-visible { color: var(--ink); outline: none; }
+.locked { opacity: .55; }
+.meta a { color: var(--accent); }
+.err { color: var(--bad); }
+.note { color: var(--muted); font-size: 13px; text-align: center; }
+.wait { padding: 28px 16px; text-align: center; color: var(--muted); }
+@media (max-width: 480px) {
+  .slot { width: 40px; padding-left: 12px; }
+  .game { padding-right: 12px; }
+  h1 { font-size: 28px; }
+}
+@media (prefers-reduced-motion: no-preference) { .card { animation: in .25s ease-out both; } @keyframes in { from { transform: translateY(4px); } } }
+</style>
+</head>
+<body>
+<main id="app">
+  <header>
+    <h1>Lineup Desk <span id="wk"></span></h1>
+    <div class="meta" id="meta">Loading your leagues…</div>
+    <div class="summary" id="summary"></div>
+  </header>
+  <div id="leagues"><div class="card wait">Loading your leagues…</div></div>
+  <p class="note">Refreshes every 30 minutes. Swap suggestions only list healthy bench players who aren't on bye and whose game hasn't started.</p>
+</main>
+<script>
+const SLOT = { WRRB_FLEX: "W/R", REC_FLEX: "W/T", SUPER_FLEX: "SF", FLEX: "FLEX", "W/R/T": "FLEX", "D/ST": "DEF", "Q/W/R/T": "SF", OP: "SF" };
+const ELIG = { QB:["QB"], RB:["RB"], WR:["WR"], TE:["TE"], K:["K"], DEF:["DEF"], "D/ST":["DEF","D/ST"],
+  FLEX:["RB","WR","TE"], "W/R/T":["RB","WR","TE"], WRRB_FLEX:["WR","RB"], "W/R":["WR","RB"], REC_FLEX:["WR","TE"], "W/T":["WR","TE"],
+  SUPER_FLEX:["QB","RB","WR","TE"], "Q/W/R/T":["QB","RB","WR","TE"], OP:["QB","RB","WR","TE"] };
+const SEV = s => {
+  const v = (s || "").toUpperCase();
+  if (["OUT","O","IR","PUP","SUS","SUSP","SUSPENDED","NA","DNR","COV","INJURY_RESERVE"].includes(v)) return "bad";
+  if (["DOUBTFUL","D"].includes(v)) return "bad";
+  if (["QUESTIONABLE","Q","DAY_TO_DAY","GTD"].includes(v)) return "warn";
+  return null;
+};
+const COLOR = { bad: "var(--bad)", warn: "var(--warn)", ok: "var(--ok)", info: "var(--info)" };
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+const et = (ms, opts) => new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", ...opts }).format(new Date(ms));
+const kick = ms => et(ms, { weekday: "short" }) + " " + et(ms, { hour: "numeric", minute: "2-digit" }).replace(":00", "").replace(" ", "").toLowerCase();
+const healthy = p => p && !p.y && !SEV(p.s) && p.k && p.k > Date.now();
+const ELIGOF = s => ELIG[s] || ({"W/R":["WR","RB"],"W/T":["WR","TE"]})[s] || [s];
+
+function issuesFor(L) {
+  const out = [];
+  L.lu.forEach(r => {
+    const p = r.pl, slot = SLOT[r.sl] || r.sl;
+    const swaps = () => (L.bn || []).filter(b => healthy(b) && ELIGOF(r.sl).includes(b.p)).slice(0, 3)
+      .map(b => `${esc(b.n)} (${b.p}, ${b.o} ${kick(b.k)})`).join(" · ");
+    if (!p) { const s = swaps(); out.push({ sev: "bad", txt: `Empty ${slot} slot`, swap: s }); return; }
+    if (p.k && p.k < Date.now()) return; // game already started: locked
+    if (p.y) { const s = swaps(); out.push({ sev: "bad", txt: `${esc(p.n)} is on bye (${slot})`, swap: s }); return; }
+    const sv = SEV(p.s);
+    if (sv) { const s = swaps(); out.push({ sev: sv, txt: `${esc(p.n)} is ${esc(p.s)}${p.b ? " · " + esc(p.b) : ""} (${slot})`, swap: s }); }
+  });
+  (L.ir || []).forEach(p => { if (!SEV(p.s)) out.push({ sev: "warn", txt: `${esc(p.n)} is in your IR slot but listed healthy` }); });
+  return out.sort((a, b) => (a.sev === "bad" ? 0 : 1) - (b.sev === "bad" ? 0 : 1));
+}
+
+function row(slotName, p) {
+  const slot = SLOT[slotName] || slotName || "";
+  if (!p) return `<tr class="sev empty" style="--c:var(--bad)"><td class="slot">${esc(slot)}</td><td class="pl">Empty</td><td></td><td class="game"></td></tr>`;
+  const sv = p.y ? "bad" : SEV(p.s);
+  const locked = p.k && p.k < Date.now();
+  const tag = p.y ? `<span class="tag" style="--c:var(--bad)">Bye</span>` : sv ? `<span class="tag" style="--c:${COLOR[sv]}">${esc(p.s)}</span>` : "";
+  const game = p.y ? "" : p.o ? `<b>${esc(p.o)}</b><br>${locked ? "played" : kick(p.k)}` : "";
+  return `<tr class="${sv && !locked ? "sev" : ""} ${locked ? "locked" : ""}" style="--c:${COLOR[sv] || "transparent"}">
+    <td class="slot">${esc(slot)}</td>
+    <td class="pl">${esc(p.n)}<small>${esc(p.p)} · ${esc(p.t || "FA")}${p.b && sv ? " · " + esc(p.b) : ""}</small></td>
+    <td>${tag}</td><td class="game">${game}</td></tr>`;
+}
+
+function card(L) {
+  const iss = issuesFor(L);
+  const opp = L.opp ? `<span class="v">vs</span> ${esc(L.opp.tm)} <small>${esc(L.opp.rec || "")}</small>` : "";
+  const alerts = iss.length
+    ? `<div class="alerts">${iss.map(i => `<div class="alert" style="--c:${COLOR[i.sev]}"><div>${i.txt}${i.swap ? `<span class="swap">Swap in: ${i.swap}</span>` : ""}</div></div>`).join("")}</div>`
+    : `<div class="allgood">Lineup is set. No injuries, byes or empty slots.</div>`;
+  const bench = (L.bn || []).length ? `<details><summary>Bench (${L.bn.length})</summary><table>${L.bn.map(p => row("BN", p)).join("")}</table></details>` : "";
+  const ir = (L.ir || []).length ? `<details><summary>IR (${L.ir.length})</summary><table>${L.ir.map(p => row("IR", p)).join("")}</table></details>` : "";
+  const oppT = L.opp && L.opp.lu ? `<details><summary>${esc(L.opp.tm)} lineup</summary><table>${L.opp.lu.map(r => row(r.sl, r.pl)).join("")}</table></details>` : "";
+  return `<section class="card">
+    <div class="strip"><div class="lg"><span class="plat">${esc(L.pf)}</span>${esc(L.lg)}${L.wk ? " · Week " + L.wk : ""}</div>
+    <div class="vs">${esc(L.tm)} <small>${esc(L.rec || "")}</small> ${opp}</div></div>
+    ${alerts}
+    <table>${L.lu.map(r => row(r.sl, r.pl)).join("")}</table>
+    ${bench}${ir}${oppT}</section>`;
+}
+
+function render(d) {
+  if (!d || !d.leagues) {
+    document.getElementById("meta").textContent = "No data yet. The first refresh runs within 30 minutes.";
+    document.getElementById("leagues").innerHTML = `<div class="card wait">No league data yet.</div>`;
+    return;
+  }
+  document.getElementById("wk").textContent = "· Week " + d.wk;
+  const upd = d.updated ? et(Date.parse(d.updated), { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) + " ET" : "unknown";
+  const errs = (d.errors || []).map(e => `<span class="err">Couldn't load ${esc(e)}</span>`).join("");
+  document.getElementById("meta").innerHTML = `<span>Updated ${upd}</span><span>${d.leagues.length} league${d.leagues.length === 1 ? "" : "s"}</span><a href="${esc(d.refresh || "#")}">Refresh now</a>${errs}`;
+  let bad = 0, warn = 0;
+  d.leagues.forEach(L => issuesFor(L).forEach(i => i.sev === "bad" ? bad++ : warn++));
+  document.getElementById("summary").innerHTML =
+    (bad ? `<span class="pill bad">${bad} must fix</span>` : "") +
+    (warn ? `<span class="pill warn">${warn} to watch</span>` : "") +
+    (!bad && !warn ? `<span class="pill ok">All lineups set</span>` : "");
+  document.getElementById("leagues").innerHTML = `<div style="display:grid;gap:18px">${d.leagues.map(card).join("")}</div>`;
+}
+
+async function load() {
+  try {
+    const r = await fetch("data.json?t=" + Date.now(), { cache: "no-store" });
+    render(r.ok ? await r.json() : null);
+  } catch (e) { render(null); }
+}
+load();
+setInterval(load, 5 * 60 * 1000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
+</script>
+</body>
+</html>

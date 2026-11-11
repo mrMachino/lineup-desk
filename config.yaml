@@ -1,0 +1,18 @@
+# Which leagues to watch. Logins live in GitHub secrets, never in this file.
+
+espn:
+  # The number after leagueId= in each ESPN league's web address.
+  league_ids: []
+
+yahoo:
+  enabled: false       # turn on after adding the 3 Yahoo secrets (finds all your leagues)
+
+sleeper:
+  username: MrMachino  # finds every Sleeper league you're in
+
+# Phone alerts: CRITICAL = empty slots, Out/IR/Doubtful starters, byes
+#               WARNING  = also Questionable starters (default)
+min_level: WARNING
+
+# Your dashboard address (alerts link to it)
+site_url: https://mrmachino.github.io/lineup-desk/
