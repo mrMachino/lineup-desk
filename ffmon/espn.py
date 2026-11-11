@@ -54,6 +54,23 @@ def pro_abbrevs(pro: dict) -> dict[int, str]:
     return {t["id"]: norm_team(t["abbrev"]) for t in pro.get("settings", {}).get("proTeams", [])}
 
 
+def discover_leagues(swid: str, espn_s2: str | None, season: int) -> list[int]:
+    """Every ESPN football league this account is in for the season."""
+    from urllib.parse import quote
+    r = _session(espn_s2, swid).get(
+        f"https://fan.api.espn.com/apis/v2/fans/{quote(swid)}",
+        params={"displayEvents": "true", "displayNow": "true", "displayRecs": "false",
+                "context": "fantasy", "source": "espn-fantasy-web"}, timeout=30)
+    r.raise_for_status()
+    ids = []
+    for p in r.json().get("preferences", []):
+        e = (p.get("metaData") or {}).get("entry") or {}
+        g = (e.get("groups") or [{}])[0]
+        if e.get("gameId") == 1 and e.get("seasonId") == season and g.get("groupId"):
+            ids.append(int(g["groupId"]))
+    return ids
+
+
 def fetch_league(league_id: int, season: int, swid: str, espn_s2: str | None, pro: dict) -> dict:
     s = _session(espn_s2, swid)
     r = s.get(f"{BASE.format(season=season)}/segments/0/leagues/{league_id}",

@@ -40,7 +40,13 @@ def collect(cfg: dict) -> tuple[list[dict], list[str]]:
         return weeks[week]
 
     swid, s2 = os.environ.get("ESPN_SWID"), os.environ.get("ESPN_S2")
-    for lid in (cfg.get("espn") or {}).get("league_ids") or []:
+    espn_ids = [int(i) for i in (cfg.get("espn") or {}).get("league_ids") or []]
+    if swid and (cfg.get("espn") or {}).get("auto_find", True):
+        try:
+            espn_ids = list(dict.fromkeys(espn.discover_leagues(swid, s2, season) + espn_ids))
+        except Exception as e:
+            errors.append(f"ESPN league list ({e})")
+    for lid in espn_ids:
         try:
             if not swid:
                 raise RuntimeError("ESPN_SWID secret is not set")

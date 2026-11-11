@@ -1,8 +1,9 @@
 # Which leagues to watch. Logins live in GitHub secrets, never in this file.
 
 espn:
-  # The number after leagueId= in each ESPN league's web address.
-  league_ids: []
+  auto_find: true      # finds every ESPN league you're in (needs the 2 ESPN secrets)
+  # Backup list, used if auto-find fails (found Nov 11, 2026):
+  league_ids: [31673225, 2123102148, 518494697, 1243880026, 1810396069, 592802010, 703345827, 1225074630, 2063087884, 2054871492, 1658637209, 217966238, 676199988, 840871780, 1966962495, 1424768046, 1413260451, 1908299909, 873698663]
 
 yahoo:
   enabled: false       # turn on after adding the 3 Yahoo secrets (finds all your leagues)
