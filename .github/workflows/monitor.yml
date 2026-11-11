@@ -2,7 +2,7 @@ name: Lineup Desk
 
 on:
   schedule:
-    - cron: "*/30 * * * *"   # every 30 minutes
+    - cron: "*/10 * * * *"   # every 10 minutes (GitHub may run it a few minutes late)
   workflow_dispatch:          # "Run workflow" button = refresh now
   push:
     branches: [main]

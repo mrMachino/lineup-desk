@@ -72,7 +72,11 @@ details { border-top: 1px solid var(--line); }
 summary { cursor: pointer; padding: 10px 16px; font-family: var(--display); font-weight: 600; font-size: 15px; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); }
 summary:hover, summary:focus-visible { color: var(--ink); outline: none; }
 .locked { opacity: .55; }
-.meta a { color: var(--accent); }
+.meta a.force { color: var(--muted); font-size: 12px; }
+.refresh { font: 600 13px var(--body); color: var(--bg); background: var(--accent); border: 0; border-radius: 4px; padding: 4px 12px; cursor: pointer; }
+.refresh:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.refresh:disabled { opacity: .7; cursor: default; }
+.meta { align-items: center; }
 .err { color: var(--bad); }
 .note { color: var(--muted); font-size: 13px; text-align: center; }
 .wait { padding: 28px 16px; text-align: center; color: var(--muted); }
@@ -92,7 +96,7 @@ summary:hover, summary:focus-visible { color: var(--ink); outline: none; }
     <div class="summary" id="summary"></div>
   </header>
   <div id="leagues"><div class="card wait">Loading your leagues…</div></div>
-  <p class="note">Refreshes every 30 minutes. Swap suggestions only list healthy bench players who aren't on bye and whose game hasn't started.</p>
+  <p class="note">Your leagues are pulled every 10 minutes. This page picks up each new pull on its own; the Refresh button grabs the latest one right away. Swap suggestions only list healthy bench players who aren't on bye and whose game hasn't started.</p>
 </main>
 <script>
 const SLOT = { WRRB_FLEX: "W/R", REC_FLEX: "W/T", SUPER_FLEX: "SF", FLEX: "FLEX", "W/R/T": "FLEX", "D/ST": "DEF", "Q/W/R/T": "SF", OP: "SF" };
@@ -171,7 +175,9 @@ function render(d) {
   document.getElementById("wk").textContent = "· Week " + d.wk;
   const upd = d.updated ? et(Date.parse(d.updated), { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) + " ET" : "unknown";
   const errs = (d.errors || []).map(e => `<span class="err">Couldn't load ${esc(e)}</span>`).join("");
-  document.getElementById("meta").innerHTML = `<span>Updated ${upd}</span><span>${d.leagues.length} league${d.leagues.length === 1 ? "" : "s"}</span><a href="${esc(d.refresh || "#")}">Refresh now</a>${errs}`;
+  const ago = d.updated ? Math.max(0, Math.round((Date.now() - Date.parse(d.updated)) / 60000)) : null;
+  document.getElementById("meta").innerHTML = `<span>Pulled from your leagues ${ago === null ? "" : ago < 1 ? "just now" : ago + " min ago"} (${upd})</span><span>${d.leagues.length} league${d.leagues.length === 1 ? "" : "s"}</span><button type="button" id="refresh" class="refresh">Refresh</button>${errs}<a class="force" href="${esc(d.refresh || "#")}" target="_blank" rel="noopener">Force a new pull on GitHub</a>`;
+  document.getElementById("refresh").onclick = async e => { e.target.textContent = "Refreshing…"; e.target.disabled = true; await load(); };
   let bad = 0, warn = 0;
   d.leagues.forEach(L => issuesFor(L).forEach(i => i.sev === "bad" ? bad++ : warn++));
   document.getElementById("summary").innerHTML =
@@ -191,7 +197,7 @@ async function load() {
 }
 load();
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
-setInterval(load, 5 * 60 * 1000);
+setInterval(load, 60 * 1000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
 </script>
 </body>
