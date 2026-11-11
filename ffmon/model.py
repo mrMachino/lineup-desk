@@ -83,6 +83,8 @@ def _swaps(league: dict, slot: str, now_ms: float) -> list[str]:
 def check_league(league: dict, now_ms: float | None = None) -> list[dict]:
     """Return [{"sev": "bad"|"warn", "txt": ..., "swap": [...]}] for one league."""
     now_ms = now_ms if now_ms is not None else time.time() * 1000
+    if is_out(league):
+        return []
     issues = []
     for row in league.get("lu", []):
         slot, p = row["sl"], row.get("pl")
@@ -106,6 +108,11 @@ def check_league(league: dict, now_ms: float | None = None) -> list[dict]:
             issues.append({"sev": "warn", "txt": f"{p['n']} is in your IR slot but listed healthy", "swap": []})
     issues.sort(key=lambda i: 0 if i["sev"] == "bad" else 1)
     return issues
+
+
+def is_out(league: dict) -> bool:
+    """No players at all: eliminated (knockout) or roster not set up - nothing to fix."""
+    return not any(r.get("pl") for r in league.get("lu", [])) and not league.get("bn") and not league.get("ir")
 
 
 def lineup_from_slots(slot_counts: list[tuple[str, int]], starters: list[tuple[str, dict]]) -> list[dict]:

@@ -105,8 +105,10 @@ const kick = ms => et(ms, { weekday: "short" }) + " " + et(ms, { hour: "numeric"
 const healthy = p => p && !p.y && !SEV(p.s) && p.k && p.k > Date.now();
 const ELIGOF = s => ELIG[s] || ({"W/R":["WR","RB"],"W/T":["WR","TE"]})[s] || [s];
 
+const isOut = L => !L.lu.some(r => r.pl) && !(L.bn || []).length && !(L.ir || []).length;
 function issuesFor(L) {
   const out = [];
+  if (isOut(L)) return out;
   L.lu.forEach(r => {
     const p = r.pl, slot = SLOT[r.sl] || r.sl;
     const swaps = () => (L.bn || []).filter(b => healthy(b) && ELIGOF(r.sl).includes(b.p)).slice(0, 3)
@@ -135,6 +137,7 @@ function row(slotName, p) {
 }
 
 function card(L) {
+  if (isOut(L)) return `<section class="card out"><div class="strip"><div class="lg"><span class="plat">${esc(L.pf)}</span>${esc(L.lg)}</div><div class="vs">${esc(L.tm)} <small>${esc(L.rec || "")}</small></div></div><div class="allgood" style="color:var(--muted)">No players on this roster. Eliminated, or the team isn't set up.</div></section>`;
   const iss = issuesFor(L);
   const opp = L.opp ? `<span class="v">vs</span> ${esc(L.opp.tm)} <small>${esc(L.opp.rec || "")}</small>` : "";
   const alerts = iss.length
@@ -167,7 +170,9 @@ function render(d) {
     (bad ? `<span class="pill bad">${bad} must fix</span>` : "") +
     (warn ? `<span class="pill warn">${warn} to watch</span>` : "") +
     (!bad && !warn ? `<span class="pill ok">All lineups set</span>` : "");
-  document.getElementById("leagues").innerHTML = `<div style="display:grid;gap:18px">${d.leagues.map(card).join("")}</div>`;
+  const rank = L => isOut(L) ? 3 : issuesFor(L).some(i => i.sev === "bad") ? 0 : issuesFor(L).length ? 1 : 2;
+  const sorted = [...d.leagues].sort((a, b) => rank(a) - rank(b));
+  document.getElementById("leagues").innerHTML = `<div style="display:grid;gap:18px">${sorted.map(card).join("")}</div>`;
 }
 
 async function load() {
