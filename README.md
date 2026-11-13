@@ -4,7 +4,7 @@ One page with every fantasy team you own on ESPN, Yahoo and Sleeper: this week's
 
 **Page:** https://mrmachino.github.io/lineup-desk/
 
-GitHub pulls your leagues every 10 minutes (Actions → *Lineup Desk*). The page picks up each pull on its own. To force a pull right now: Actions → Lineup Desk → **Run workflow**.
+GitHub pulls your leagues every morning (7:47 AM ET) and Sunday at 11:45 AM ET, after the inactives report. The Refresh button on the page pulls ESPN + Sleeper live any time. To force a pull right now: Actions → Lineup Desk → **Run workflow**.
 
 ## Logins (GitHub secrets)
 

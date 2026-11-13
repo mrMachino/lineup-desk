@@ -2,7 +2,9 @@ name: Lineup Desk
 
 on:
   schedule:
-    - cron: "*/10 * * * *"   # every 10 minutes (GitHub may run it a few minutes late)
+    # Times are UTC. Set for Eastern Standard Time (Nov-Mar); during daylight time they run 1 hour later.
+    - cron: "47 12 * * *"    # every morning, 7:47 AM ET
+    - cron: "45 16 * * 0"    # Sunday 11:45 AM ET, right after inactives for the 1 PM games
   workflow_dispatch:          # "Run workflow" button = refresh now
   push:
     branches: [main]
